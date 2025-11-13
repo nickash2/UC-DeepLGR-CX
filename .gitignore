@@ -1,5 +1,4 @@
 .github
 # .devcontainer
 *.tex
-.md
-    
+__pycache__/
