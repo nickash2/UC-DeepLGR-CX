@@ -193,8 +193,6 @@ The preprocessing pipeline loads and prepares external features, but they are no
    - Use separate processing branch and fuse with SE block output
    - Add as conditioning to GlobalNet pooling layers
 
-See `.github/copilot-instructions.md` for detailed architecture guidance.
-
 ## References
 
 - Original DeepLGR: https://github.com/yoshall/DeepLGR
