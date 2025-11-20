@@ -1,200 +1,192 @@
-# DeepLGR Urban Flow Prediction with External Features
-# delete the instructions under .github before submission
+# DeepLGR Extended - Urban Flow Prediction
 
-Research project extending DeepLGR for urban crowd flow prediction by integrating weather and calendar features into spatio-temporal predictions.
+Extension of DeepLGR for urban crowd flow prediction with weather and calendar features. Built for the TaxiBJ dataset.
+
+> **Original Implementation**: [yoshall/DeepLGR](https://github.com/yoshall/DeepLGR)
 
 ## Project Structure
 
 ```
 .
-├── main.py                  # Master pipeline orchestration script
 ├── src/
-│   ├── deeplgr.py          # DeepLGR model architecture (SE blocks + GlobalNet)
-│   ├── preprocess.py       # Data preprocessing (TaxiBJ + weather + calendar)
-│   ├── train.py            # Model training with checkpointing
-│   └── evaluate.py         # Evaluation with MAE/SMAPE metrics
-├── data/                    # Raw TaxiBJ dataset
-│   ├── BJ13-16_M32x32_T30_InOut.h5
-│   ├── BJ_Meteorology.h5
-│   └── BJ_Holiday.txt
-└── checkpoints/             # Saved model checkpoints (created during training)
+│   ├── deeplgr.py            # Baseline DeepLGR model (SE blocks + GlobalNet)
+│   ├── deeplgr_extended.py   # Extended model with external features
+│   ├── preprocess.py         # General preprocessing pipeline
+│   ├── preprocess_periods.py # Period-based preprocessing (P1-P4 from paper)
+│   ├── train.py              # Training pipeline with early stopping
+│   ├── evaluate.py           # Evaluation with MAE/SMAPE metrics
+│   └── arima_baseline.py     # ARIMA baseline for comparison
+├── data/
+│   ├── BJ{13-16}_M32x32_T30_InOut.h5  # Flow data by year
+│   ├── BJ_Meteorology.h5              # Weather data
+│   ├── BJ_Holiday.txt                 # Holiday calendar
+│   └── processed/                     # Preprocessed .npz files
+├── checkpoints/              # Model checkpoints
+└── results/                  # Evaluation results
 ```
 
 ## Quick Start
 
-### 1. Run Complete Pipeline
+### 1. Preprocess Data
 
-Process data, train model, and evaluate results:
-
+**Using period-based splits (recommended for paper comparison):**
 ```bash
-python main.py --mode all --year 16 --epochs 100
+python src/preprocess_periods.py --output_dir data/processed
 ```
 
-### 2. Run Individual Steps
+This creates P1-P4 datasets matching the original DeepLGR paper date ranges.
 
-**Preprocessing only:**
+**Or preprocess single year:**
 ```bash
-python main.py --mode preprocess --year 16
+python src/preprocess.py --year 16 --output_dir data/processed
 ```
 
-**Training only:**
+### 2. Train Models
+
+**Train extended model (with external features):**
 ```bash
-python main.py --mode train --year 16 --epochs 50 --batch_size 64
+python src/train.py \
+  --use_external \
+  --data_path data/processed/BJP1_train.npz \
+  --val_path data/processed/BJP1_val.npz \
+  --checkpoint_dir checkpoints_extended \
+  --epochs 100
 ```
 
-**Evaluation only:**
+**Train baseline model (no external features):**
 ```bash
-python main.py --mode evaluate --year 16 --visualize
+python src/train.py \
+  --data_path data/processed/BJP1_train.npz \
+  --val_path data/processed/BJP1_val.npz \
+  --checkpoint_dir checkpoints_baseline \
+  --epochs 100
 ```
 
-## Pipeline Details
+### 3. Evaluate
 
-### Step 1: Preprocessing (`src/preprocess.py`)
-
-Prepares TaxiBJ dataset with external features:
-
-- **Filters timeslots**: 6am-11pm (slots 12-45 of 48 daily slots)
-- **Integrates weather**: Temperature, wind speed, 17 weather categories (one-hot)
-- **Integrates calendar**: Weekend/weekday flags, holiday indicators
-- **Creates temporal samples**: Closeness (12 recent), Period (3 daily), Trend (3 weekly)
-- **Splits data**: 80% train, 10% validation, 10% test
-- **Normalizes**: Flow data (min-max), continuous features (z-score)
-
-**Output:** `data/processed/BJ{year}_{train,val,test}.npz` + normalization stats
-
-**Example:**
+**Evaluate extended model:**
 ```bash
-python src/preprocess.py --year 16 --len_closeness 12 --len_period 3 --len_trend 3
+python src/evaluate.py \
+  --use_external \
+  --data_dir data/processed \
+  --year P1 \
+  --checkpoint checkpoints_extended/best.pth \
+  --output_dir results
 ```
 
-### Step 2: Training (`src/train.py`)
-
-Trains DeepLGR model with:
-
-- **Architecture**: 9 SE residual blocks + GlobalNet + tensor decomposition predictor
-- **Optimizer**: Adam (default lr=0.001)
-- **Loss**: MSE (Mean Squared Error)
-- **Early stopping**: Patience=10 epochs
-- **Checkpointing**: Saves best model by validation loss
-
-**Output:** `checkpoints/best.pth`, `checkpoints/latest.pth`, `checkpoints/history.json`
-
-**Example:**
+**Evaluate baseline:**
 ```bash
-python src/train.py --data_dir data/processed --year 16 --epochs 100 --batch_size 32
+python src/evaluate.py \
+  --data_dir data/processed \
+  --year P1 \
+  --checkpoint checkpoints_baseline/best.pth \
+  --output_dir results
 ```
 
-**Note:** External features are loaded but not yet integrated into the model architecture. Integration is the research contribution to implement.
+### 4. Run ARIMA Baseline
 
-### Step 3: Evaluation (`src/evaluate.py`)
-
-Evaluates trained model with:
-
-- **Overall metrics**: MAE, SMAPE for inflow/outflow
-- **Subgroup analysis**:
-  - Weekday vs Weekend
-  - Regular day vs Holiday
-  - Rainy vs Non-rainy weather
-- **Visualizations**: Sample predictions vs ground truth heatmaps
-
-**Output:** `results/evaluation_results.json`, visualization PNGs
-
-**Example:**
+**Train ARIMA:**
 ```bash
-python src/evaluate.py --checkpoint checkpoints/best.pth --year 16 --visualize
+python src/arima_baseline.py --mode train --data_dir data/processed --year P1
 ```
 
-## Model Architecture
+**Evaluate ARIMA:**
+```bash
+python src/arima_baseline.py --mode evaluate --data_dir data/processed --year P1
+```
 
-DeepLGR consists of:
+## Model Details
 
-1. **Input**: Three temporal components (closeness, period, trend)
-   - Closeness: Recent 12 consecutive timeslots
-   - Period: Same time from previous 3 days (daily pattern)
-   - Trend: Same time from previous 3 weeks (weekly pattern)
+### DeepLGR Baseline
 
-2. **SENet Path**: Conv → 9× SE Residual Blocks → Conv (with skip connection)
-   - SE (Squeeze-and-Excitation) blocks for local spatial relations
+Standard architecture from the original paper:
+- 9 SE (Squeeze-and-Excitation) residual blocks
+- GlobalNet with multi-scale pooling (1×1, 2×2, 4×4, 8×8)
+- Tensor decomposition predictor
+- Input: Closeness (12), Period (3), Trend (3) temporal windows
 
-3. **GlobalNet**: Multi-scale pyramid pooling + SubPixel upsampling
-   - Captures global spatial dependencies across the city grid
+### DeepLGR Extended
 
-4. **Predictor**: Tensor decomposition (default) or matrix factorization
-   - Learned factors: H (height), W (width), F (features), Core tensor
+Modified architecture with external features:
+- Same backbone as baseline
+- Additional input: 21 external features (weather + calendar)
+- Features broadcast spatially to 32×32 grid
+- Concatenated with flow data before first conv layer
+
+**External Features (21 total):**
+- Temperature (1, normalized)
+- Wind speed (1, normalized)
+- Weather one-hot (17 categories)
+- Weekend flag (1, binary)
+- Holiday flag (1, binary)
 
 ## Data Format
 
-**TaxiBJ Flow Data:**
-- Shape: `[n_timeslots, 2, 32, 32]`
-- Channels: [inflow, outflow]
-- Grid: 32×32 Beijing city representation
-- Interval: 30 minutes (48 slots/day)
+**Flow Data:**
+- Shape: `[batch, 2, 32, 32]`
+- Channels: inflow, outflow
+- Grid: 32×32 Beijing representation
+- Interval: 30 minutes, filtered to 6am-11pm
 
-**External Features (per timeslot):**
-- Temperature (continuous, normalized)
-- Wind speed (continuous, normalized)
-- Weather (17 categories, one-hot): Sunny, Cloudy, Rainy, Snowy, etc.
-- Weekend flag (binary)
-- Holiday flag (binary)
-- **Total: 21 features**
+**Preprocessed Files:**
+```
+BJP{1-4}_train.npz:
+  - X_closeness: [n, 12, 2, 32, 32]
+  - X_period: [n, 3, 2, 32, 32]
+  - X_trend: [n, 3, 2, 32, 32]
+  - X_external: [n, 21]
+  - Y: [n, 2, 32, 32]
+  - timestamps: [n]
+```
 
-## Research Questions
+## Training Details
 
-1. Does incorporating weather + calendar data improve prediction accuracy vs. baseline DeepLGR?
-2. Which external factors contribute most (temperature, rain, holidays)?
-3. Does external context improve robustness under abnormal conditions?
+**Default hyperparameters:**
+- Optimizer: Adam (lr=0.005)
+- Loss: MSE
+- Batch size: 32
+- Early stopping: patience=10
+- LR scheduling: ReduceLROnPlateau (factor=0.5, patience=5)
+
+**Checkpointing:**
+- `best.pth`: Best validation loss
+- `latest.pth`: Most recent epoch
+- `history.json`: Training/validation loss curves
 
 ## Evaluation Metrics
 
-- **MAE**: Mean Absolute Error (lower is better)
-- **SMAPE**: Symmetric Mean Absolute Percentage Error (lower is better)
+**Overall:**
+- MAE (Mean Absolute Error)
+- SMAPE (Symmetric Mean Absolute Percentage Error)
 
-Both computed for:
-- Overall performance
-- Inflow vs Outflow separately
-- Subgroups (weekday/weekend, holiday/regular, rainy/sunny)
+**Subgroup Analysis:**
+- Weekday vs Weekend
+- Regular vs Holiday
+- Rainy vs Non-rainy
 
-## Configuration Options
+All metrics computed separately for inflow and outflow.
 
-### Temporal Parameters
-- `--len_closeness`: Number of recent timeslots (default: 12)
-- `--len_period`: Number of daily samples (default: 3)
-- `--len_trend`: Number of weekly samples (default: 3)
+## Preprocessing Options
 
-### Training Parameters
-- `--batch_size`: Batch size (default: 32)
-- `--lr`: Learning rate (default: 0.001)
-- `--epochs`: Max epochs (default: 100)
-- `--patience`: Early stopping patience (default: 10)
-- `--device`: cuda or cpu (default: cuda)
+**Period-based (preprocess_periods.py):**
+- P1: 2013-07-01 to 2013-10-30
+- P2: 2014-03-01 to 2014-06-27
+- P3: 2015-03-01 to 2015-06-30
+- P4: 2015-11-01 to 2016-04-10
 
-### Data Parameters
-- `--year`: TaxiBJ year: 13, 14, 15, or 16 (default: 16)
-- `--data_dir`: Raw data directory (default: data)
-- `--processed_dir`: Preprocessed data directory (default: data/processed)
-
-## Expected Results
-
-Based on original DeepLGR paper:
-- Training time: ~4-6 hours on GPU for 100 epochs
-- BJ16 dataset: 7220 timeslots → ~5776 train, ~722 val, ~722 test samples
-- Expected MAE: ~10-20 (baseline without external features)
-
-## Development Notes
-
-**External Feature Integration (TODO):**
-
-The preprocessing pipeline loads and prepares external features, but they are not yet integrated into the DeepLGR model architecture. To complete the research contribution:
-
-1. Modify `DeepLGR.__init__()` to accept external feature channels
-2. Update `DeepLGR.forward()` to concatenate or fuse external features with flow inputs
-3. Options for integration:
-   - Concatenate as additional input channels to first conv layer
-   - Use separate processing branch and fuse with SE block output
-   - Add as conditioning to GlobalNet pooling layers
+**General (preprocess.py):**
+```bash
+python src/preprocess.py \
+  --year 16 \
+  --len_closeness 12 \
+  --len_period 3 \
+  --len_trend 3 \
+  --output_dir data/processed
+```
 
 ## References
 
-- Original DeepLGR: https://github.com/yoshall/DeepLGR
-- Paper: "Revisiting Convolutional Neural Networks for Citywide Crowd Flow Analytics"
-- Dataset: TaxiBJ from Deep Spatio-Temporal Residual Networks (AAAI 2017)
+- **Original DeepLGR**: [yoshall/DeepLGR](https://github.com/yoshall/DeepLGR)
+- **Paper**: "Revisiting Convolutional Neural Networks for Citywide Crowd Flow Analytics" ([Arxiv URL](https://arxiv.org/abs/2003.00895))
+- **Dataset**: "TaxiBJ: InFlow/OutFlow, Meteorology and Holidays at Beijing" ([Repo URL](https://gitee.com/arislee/taxi-bj))
+
