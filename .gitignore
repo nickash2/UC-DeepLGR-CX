@@ -2,3 +2,5 @@
 # .devcontainer
 *.tex
 __pycache__/
+*.npz
+*.pkl

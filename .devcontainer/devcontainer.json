@@ -40,8 +40,8 @@
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
 	// "forwardPorts": [],
 
-	// Enable GPU support
-	"runArgs": ["--gpus", "all"],
+	// Enable GPU support (comment out if no GPU available)
+	// "runArgs": ["--gpus", "all"],
 	
 	// Use 'postCreateCommand' to run commands after the container is created.
 	"postCreateCommand": "pip3 install --user -r requirements.txt",
