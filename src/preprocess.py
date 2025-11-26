@@ -1,4 +1,5 @@
 import os
+import random
 import h5py
 import numpy as np
 from datetime import datetime
@@ -6,13 +7,20 @@ import pickle
 
 
 class TaxiBJPreprocessor:
-    def __init__(self, data_dir="data", output_dir="data/processed"):
+    def __init__(self, data_dir="data", output_dir="data/processed", seed=42):
         self.data_dir = data_dir
         self.output_dir = output_dir
         os.makedirs(output_dir, exist_ok=True)
 
+        self.seed = seed
         self.min_slot = 12  # 6am
         self.max_slot = 46  # 11pm
+        self.set_seed()
+
+    def set_seed(self):
+        random.seed(self.seed)
+        np.random.seed(self.seed)
+        print(f"Set random seed to {self.seed}")
 
     def load_flow_data(self, years=["16"]):
         if isinstance(years, str):
@@ -308,6 +316,8 @@ if __name__ == "__main__":
     parser.add_argument("--len_closeness", type=int, default=12)
     parser.add_argument("--len_period", type=int, default=3)
     parser.add_argument("--len_trend", type=int, default=3)
+    parser.add_argument("--seed", type=int, default=42, help="Random seed for reproducibility")
+
 
     args = parser.parse_args()
 

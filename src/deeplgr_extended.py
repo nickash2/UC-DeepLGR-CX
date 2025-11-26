@@ -29,9 +29,14 @@ class DeepLGRExtended(nn.Module):
         self.n_external_features = n_external_features
 
         flow_channels = sum(t_params) * in_channels
-        total_in_channels = flow_channels + n_external_features
 
-        self.conv1 = nn.Conv2d(total_in_channels, n_filters, 3, 1, 1)
+        self.conv1 = nn.Conv2d(flow_channels, n_filters, 3, 1, 1)
+
+        self.external_embedding = nn.Sequential(
+            nn.Linear(n_external_features, 10),
+            nn.ReLU(),
+            nn.Linear(10, self.out_channels * height * width),
+        )
 
         se_blocks = []
         for _ in range(n_residuals):
@@ -68,13 +73,6 @@ class DeepLGRExtended(nn.Module):
     def forward(self, inputs, external_features):
         out = torch.cat(inputs, dim=1)
         b = out.shape[0]
-
-        external_spatial = external_features.unsqueeze(-1).unsqueeze(-1)
-        external_spatial = external_spatial.expand(
-            b, self.n_external_features, self.height, self.width
-        )
-
-        out = torch.cat([out, external_spatial], dim=1)
 
         out1 = self.conv1(out)
         out = self.senet(out1)
@@ -113,6 +111,13 @@ class DeepLGRExtended(nn.Module):
             out = out.permute(0, 3, 1, 2)
         else:
             out = self.output_conv(out)
+
+        external_out = self.external_embedding(external_features)
+        external_out = external_out.reshape(
+            b, self.out_channels, self.height, self.width
+        )
+
+        out = out + external_out
 
         return out
 

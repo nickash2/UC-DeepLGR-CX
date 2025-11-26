@@ -145,6 +145,7 @@ def main():
     parser.add_argument("--len_closeness", type=int, default=5)
     parser.add_argument("--len_period", type=int, default=3)
     parser.add_argument("--len_trend", type=int, default=3)
+    parser.add_argument("--seed", type=int, default=42, help="Random seed for reproducibility")
 
     args = parser.parse_args()
 
@@ -155,9 +156,10 @@ def main():
 
     print(f"Processing periods: {', '.join(periods_to_process)}")
     print(f"Params: t=({args.len_closeness},{args.len_period},{args.len_trend})")
+    print(f"Random seed: {args.seed}")
 
     preprocessor = PeriodPreprocessor(
-        data_dir=args.data_dir, output_dir=args.output_dir
+        data_dir=args.data_dir, output_dir=args.output_dir, seed=args.seed
     )
 
     t_params = (args.len_closeness, args.len_period, args.len_trend)

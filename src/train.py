@@ -1,4 +1,5 @@
 import os
+import random
 import sys
 import numpy as np
 import torch
@@ -170,14 +171,15 @@ class Trainer:
 
             print(
                 f"Train: {train_loss:.6f} | Val: {val_loss:.6f} | "
-                f"Best: {best_val_loss:.6f} | Patience: {patience_counter}/{patience}"
+                f"Best: {best_val_loss:.6f} | Patience: {patience_counter}/{patience} | LR: {self.optimizer.param_groups[0]['lr']:.3e}"
             )
+
+            # Step scheduler before early stopping check
+            self.scheduler.step(val_loss)
 
             if patience_counter >= patience:
                 print(f"Early stopping at epoch {epoch}")
                 break
-
-            self.scheduler.step(val_loss)
 
         history_path = os.path.join(self.checkpoint_dir, "history.json")
         with open(history_path, "w") as f:
@@ -185,8 +187,21 @@ class Trainer:
 
         print(f"Training complete. Best: {best_val_loss:.6f}")
 
+def set_seed(seed=42):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+    print(f"Using seed {seed}")
+
+
 
 def main(args):
+    set_seed(42)
+
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
     print(f"Model: {'Extended' if args.use_external else 'Baseline'}")

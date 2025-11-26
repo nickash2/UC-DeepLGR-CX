@@ -1,4 +1,5 @@
 import os
+import random
 import sys
 import numpy as np
 import torch
@@ -356,8 +357,20 @@ def load_model(
 
     return model
 
+def set_seed(seed=42):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+    print(f"Using seed {seed}")
+    
 
 def main(args):
+    set_seed(42)
+
     print("=" * 60)
     print("DeepLGR Model Evaluation")
     print("=" * 60)
