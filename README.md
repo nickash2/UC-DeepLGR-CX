@@ -15,7 +15,6 @@ Extension of DeepLGR for urban crowd flow prediction with weather and calendar f
 │   ├── preprocess_periods.py # Period-based preprocessing (P1-P4 from paper)
 │   ├── train.py              # Training pipeline with early stopping
 │   ├── evaluate.py           # Evaluation with MAE/SMAPE metrics
-│   └── arima_baseline.py     # ARIMA baseline for comparison
 ├── data/
 │   ├── BJ{13-16}_M32x32_T30_InOut.h5  # Flow data by year
 │   ├── BJ_Meteorology.h5              # Weather data
@@ -83,17 +82,6 @@ python src/evaluate.py \
   --output_dir results
 ```
 
-### 4. Run ARIMA Baseline
-
-**Train ARIMA:**
-```bash
-python src/arima_baseline.py --mode train --data_dir data/processed --year P1
-```
-
-**Evaluate ARIMA:**
-```bash
-python src/arima_baseline.py --mode evaluate --data_dir data/processed --year P1
-```
 
 ## Model Details
 
@@ -101,7 +89,7 @@ python src/arima_baseline.py --mode evaluate --data_dir data/processed --year P1
 
 Standard architecture from the original paper:
 - 9 SE (Squeeze-and-Excitation) residual blocks
-- GlobalNet with multi-scale pooling (1×1, 2×2, 4×4, 8×8)
+- GlobalNet with multi-scale pooling (1x1, 2x2, 4x4, 8x8)
 - Tensor decomposition predictor
 - Input: Closeness (12), Period (3), Trend (3) temporal windows
 
@@ -110,7 +98,7 @@ Standard architecture from the original paper:
 Modified architecture with external features:
 - Same backbone as baseline
 - Additional input: 21 external features (weather + calendar)
-- Features broadcast spatially to 32×32 grid
+- Features broadcast spatially to 32x32 grid
 - Concatenated with flow data before first conv layer
 
 **External Features (21 total):**
@@ -125,7 +113,7 @@ Modified architecture with external features:
 **Flow Data:**
 - Shape: `[batch, 2, 32, 32]`
 - Channels: inflow, outflow
-- Grid: 32×32 Beijing representation
+- Grid: 32x32 Beijing representation
 - Interval: 30 minutes, filtered to 6am-11pm
 
 **Preprocessed Files:**
