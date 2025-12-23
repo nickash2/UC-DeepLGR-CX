@@ -26,22 +26,7 @@ Extension of DeepLGR for urban crowd flow prediction with weather and calendar f
 └── reprocess_and_train.sh    # Full pipeline: preprocess + train + evaluate
 ```
 
-## Quick Start
-
-### Automated Training (Recommended)
-
-**Train all periods (P1-P4) with baseline and extended models:**
-```bash
-bash train_all_periods.sh
-```
-
-This script automatically:
-- Trains baseline and extended models for each period
-- Evaluates on test sets 
-- Saves results to `results_per_period/all_periods_results.csv`
-- Generates checkpoints in `checkpoints_per_period/{period}_{model}/`
-
-### Manual Workflow
+## Workflow
 
 ### 1. Preprocess Data
 
