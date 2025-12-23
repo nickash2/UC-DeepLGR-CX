@@ -15,7 +15,6 @@ Extension of DeepLGR for urban crowd flow prediction with weather and calendar f
 │   ├── preprocess_periods.py # Period-based preprocessing (P1-P4 from paper)
 │   ├── train.py              # Training pipeline with early stopping
 │   ├── evaluate.py           # Evaluation with MAE/SMAPE metrics
-│   └── arima_baseline.py     # ARIMA baseline for comparison
 ├── data/
 │   ├── BJ{13-16}_M32x32_T30_InOut.h5  # Flow data by year
 │   ├── BJ_Meteorology.h5              # Weather data
@@ -89,13 +88,19 @@ python src/evaluate.py \
   --use_external \
   --data_dir data/processed \
   --year P1 \
-  --checkpoint checkpoints_per_period/P1_extended/best.pth \
-  --output_dir results_per_period/P1_extended
+  --checkpoint checkpoints_extended/best.pth \
+  --output_dir results
 ```
 
-This generates:
-- `evaluation_results.json` with overall metrics
-- Sample visualization PNGs
+**Evaluate baseline:**
+```bash
+python src/evaluate.py \
+  --data_dir data/processed \
+  --year P1 \
+  --checkpoint checkpoints_baseline/best.pth \
+  --output_dir results
+```
+
 
 ## Model Details
 
@@ -109,14 +114,11 @@ Standard architecture from the original paper:
 
 ### DeepLGR Extended (ST-ResNet-style Fusion)
 
-Modified architecture with late-fusion external features:
-- **Flow path**: Same backbone as baseline (SENet + GlobalNet + Predictor)
-- **External path**: Separate 2-layer MLP (21 $\rightarrow$ 10 $\rightarrow$ 2048 features)
-- **Fusion**: Element-wise addition at output (residual connection)
-  ```
-  output = flow_prediction + external_embedding
-  ```
-
+Modified architecture with external features:
+- Same backbone as baseline
+- Additional input: 21 external features (weather + calendar)
+- Features broadcast spatially to 32x32 grid
+- Concatenated with flow data before first conv layer
 
 **External Features (21 total):**
 - Temperature (1, z-score normalized)
@@ -131,15 +133,7 @@ Modified architecture with late-fusion external features:
 - Shape: `[batch, 2, 32, 32]`
 - Channels: inflow, outflow
 - Grid: 32x32 Beijing representation
-- Interval: 30 minutes, filtered to 6am-11pm (slots 12-46)
-- Step size: 1 timeslot (overlapping samples)
-
-**Temporal Input:**
-- Closeness: 12 consecutive recent timeslots (6 hours)
-- Period: 3 timeslots at same time from previous 3 days
-- Trend: 3 timeslots at same time from previous 3 weeks
-- Total lookback: Up to 21 days
-- Prediction: 1 timeslot ahead (30 minutes)
+- Interval: 30 minutes, filtered to 6am-11pm
 
 **Preprocessed Files:**
 ```
