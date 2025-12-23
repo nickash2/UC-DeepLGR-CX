@@ -1,4 +1,0 @@
-Model,Dataset,Grid_Resolution,MAE,SMAPE_Percent,MAE_Inflow,MAE_Outflow,Train_Samples,Val_Samples,Test_Samples,Epochs_Trained,Best_Epoch,External_Features,SE_Blocks,Filters,Parameters
-Baseline DeepLGR,P1,32x32,12.07,14.89,12.04,12.11,1961,245,246,71,61,No,9,64,840832
-Extended DeepLGR,P1,32x32,15.37,19.33,15.34,15.39,1961,245,246,N/A,N/A,Yes,9,64,N/A
-Paper DeepLGR,P1,128x128,2.15,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,No,N/A,N/A,N/A

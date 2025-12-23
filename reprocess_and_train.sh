@@ -1,6 +1,4 @@
 #!/bin/bash
-# Reprocess all period data with proper seeds, then train all models
-# This ensures full reproducibility
 
 set -e  # Exit on error
 
